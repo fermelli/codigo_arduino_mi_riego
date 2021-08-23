@@ -7,28 +7,32 @@ RTC_DS3231 reloj;
 
 long porcentajeHumedad;
 
-void setup() {
+void setup()
+{
   pinMode(interruptor, INPUT);
   pinMode(led, OUTPUT);
   Serial.begin(9600);
 
-  if (!reloj.begin()) {
+  if (!reloj.begin())
+  {
     Serial.println("No se pudo encontrar el Reloj RTC");
     Serial.flush();
     abort();
   }
 
-  if (reloj.lostPower()) {
+  if (reloj.lostPower())
+  {
     Serial.println("¡El Reloj RTC perdió energía, ¡establezcamos la hora!");
     reloj.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
-
 }
 
-void loop() {
-  
+void loop()
+{
+
   byte lectura = digitalRead(interruptor);
-  if(lectura == HIGH) {
+  if (lectura == HIGH)
+  {
     DateTime ahora = reloj.now();
     porcentajeHumedad = random(50, 80);
     Serial.print(porcentajeHumedad);
@@ -38,5 +42,4 @@ void loop() {
     delay(1000);
     digitalWrite(led, LOW);
   }
-
 }
