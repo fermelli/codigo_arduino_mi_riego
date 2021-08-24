@@ -12,13 +12,16 @@ const float pin_sh2 = A1;
 //Constante para el valor de la tierra seca
 const float seco = 1023;
 
-//Pines para los reles
-const int r1 = 3;
-const int r2 = 5;
-const int r3 = 11; //pin bomba retroalimentacion
+/* 
+   PINES PARA LOS RELES
+   Se deben conectar en los pines digitales de la placa
+*/
+const int releIN1 = 40; // bomba de agua (recirculacion)
+const int releIN2 = 41; // bomba de agua (riego)
+const int releIN3 = 42; // bomba de agua (riego)
 
-//Interruptor
-const byte interruptor = 7;
+// Interruptor
+const byte interruptorBombaRecirculacion = 38;
 bool esta_encendida = false;
 
 //Numero de lecturas del sensor de humedad para el promedio
@@ -48,17 +51,17 @@ const int time_le = 2000;
 void setup()
 {
    lcd.init();
-   pinMode(r1, OUTPUT);
-   pinMode(r2, OUTPUT);
-   pinMode(r3, OUTPUT);
-   pinMode(interruptor, INPUT_PULLUP);
+   pinMode(releIN2, OUTPUT);
+   pinMode(releIN3, OUTPUT);
+   pinMode(releIN1, OUTPUT);
+   pinMode(interruptorBombaRecirculacion, INPUT_PULLUP);
    Serial.begin(9600);
 }
 
 void loop()
 {
-   digitalWrite(r1, HIGH);
-   digitalWrite(r2, HIGH);
+   digitalWrite(releIN2, HIGH);
+   digitalWrite(releIN3, HIGH);
    lcd.clear();
    lcd.backlight();
    lcd.setCursor(0, 0);
@@ -71,27 +74,27 @@ void loop()
 
    if (prom_sh1 >= min_le && prom_sh1 <= max_le)
    {
-      digitalWrite(r1, LOW);
+      digitalWrite(releIN2, LOW);
       lcd.setCursor(0, 0);
       lcd.print("REGANDO LECHUGA CARRIL 1");
       lcd.setCursor(0, 1);
       lcd.print("Durante: " + String(time_le / 1000) + "s");
       delay(time_le);
-      digitalWrite(r1, HIGH);
+      digitalWrite(releIN2, HIGH);
    }
 
    if (prom_sh2 >= min_le && prom_sh2 <= max_le)
    {
-      digitalWrite(r2, LOW);
+      digitalWrite(releIN3, LOW);
       lcd.setCursor(0, 0);
       lcd.print("REGANDO LECHUGA CARRIL 2");
       lcd.setCursor(0, 1);
       lcd.print("Durante: " + String(time_le / 1000) + "s");
       delay(time_le);
-      digitalWrite(r2, HIGH);
+      digitalWrite(releIN3, HIGH);
    }
 
-   int lectura = digitalRead(interruptor);
+   int lectura = digitalRead(interruptorBombaRecirculacion);
    if (lectura == LOW)
    {
       esta_encendida = true;
@@ -104,12 +107,12 @@ void loop()
    if (esta_encendida)
    {
       Serial.println("encendido");
-      digitalWrite(r3, LOW);
+      digitalWrite(releIN1, LOW);
    }
    else
    {
       Serial.println("apagado");
-      digitalWrite(r3, HIGH);
+      digitalWrite(releIN1, HIGH);
    }
 }
 
