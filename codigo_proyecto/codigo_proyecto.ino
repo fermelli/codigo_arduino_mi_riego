@@ -1,140 +1,172 @@
-//Librerias para el uso de la pantalla LCD
+// Librerias para el uso de la pantalla LCD
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-//Variable para el manejo de la pantalla LCD
+// Variable para el manejo de la pantalla LCD
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
-//Pines para los sensores de humedad
-const float pin_sh1 = A0;
-const float pin_sh2 = A1;
+/* 
+   Pines para los Sensores de Humedad de Suelo
+   Los pines para los sensores de humedad de suelo deben ser analógicos
+   SHS1 -> Sensor de Humedad de Suelo 1
+   SHS2 -> Sensor de Humedad de Suelo 2
+*/
+const float pinSHS1 = A0;
+const float pinSHS2 = A1;
 
-//Constante para el valor de la tierra seca
-const float seco = 1023;
+/*
+   La placa Arduino detectará el nivel de voltaje entregado por el sensor de humedad de suelo,
+   y lo convertirá en un número equivalente a la cantidad de humedad detectada entre 0 y 1023
+*/
+const float valorLecturaTierraSeca = 1023; // Constante para el valor de la tierra seca
 
 /* 
    PINES PARA LOS RELES
-   Se deben conectar en los pines digitales de la placa
+   Se deben conectar en pines digitales de la placa, por lo tanto la funcion digitalWrite(pin, ESTADO) donde:
+   pin: es el numero del pin de la entrada (IN) del rele
+   ESTADO: puede ser LOW (Encendido) o HIGH (Apagado)
 */
-const int releIN1 = 40; // bomba de agua (recirculacion)
-const int releIN2 = 41; // bomba de agua (riego)
-const int releIN3 = 42; // bomba de agua (riego)
+const byte pinReleIN1 = 40; // asociada a la bomba de agua (recirculacion)
+const byte pinReleIN2 = 41; // asociada a la bomba de agua (riego del SHS1)
+const byte pinReleIN3 = 42; // asociada a la bomba de agua (riego del SHS2)
+const byte pinLed = 7;      // como aviso para cuando la bomba de agua (recirculacion) esta encendedida
 
 // Interruptor
-const byte interruptorBombaRecirculacion = 38;
-bool esta_encendida = false;
+const byte pinInterruptor = 38;
+bool encendidoBombaAguaRecirculacion = false;
 
-//Numero de lecturas del sensor de humedad para el promedio
-const int cant_lec = 10;
-//tiempo entre cada uno de las lecturas
-const int time_lectura = 50;
-//tiempo para mostrar los resultados de la lectura
-const int time_mo = 5000;
+// Numero de lecturas del sensor de humedad para el promedio
+const byte mumeroLecturasParaObtenerPromedio = 10;
+// tiempo entre cada una de las lecturas
+const int tiempoEntreLecturas = 500;
+// tiempo para mostrar los resultados de la lectura
+const int tiempoMostrandoLecturasHumedadSuelo = 5000;
 
-//Variables del promedio de lectura de humedades
-float prom_sh1 = 0;
-float prom_sh2 = 0;
+// Variables para el promedio de humedades del suelo leidas por los sensores
+float promedioLecturasSHS1 = 0;
+float promedioLecturasSHS2 = 0;
+float promedioPorcentajesSHS1 = 0;
+float promedioPorcentajesSHS2 = 0;
 
-//Valores minimos y maximos para encender la bomba de la lechuga
-const int min_le = 0;
-const int max_le = 70;
+// Valores minimos y maximos para encender la bomba de agua (riego del SHS1)
+const int porcentajeMinimoSHS1 = 0;
+const int porcentajeMaximoSHS1 = 70;
 
-//Valores minimos y maximos para encender la bomba de la cebolla
-//const int min_ce = 0;
-//const int max_ce = 70;
+// Valores minimos y maximos para encender la bomba de agua (riego del SHS2)
+const int porcentajeMinimoSHS2 = 0;
+const int porcentajeMaximoSHS2 = 70;
 
-//Tiempo de riego para la lechuga
-const int time_le = 2000;
-//Tiempo de riego para la cebolla
-//const int time_ce = 2000;
+// Tiempo de riego para la bomba de agua (riego del SHS1)
+const int tiempoRiegoSHS1 = 2000;
+// Tiempo de riego para la bomba de agua (riego del SHS2)
+const int tiempoRiegoSHS2 = 2000;
 
 void setup()
 {
-   lcd.init();
-   pinMode(releIN2, OUTPUT);
-   pinMode(releIN3, OUTPUT);
-   pinMode(releIN1, OUTPUT);
-   pinMode(interruptorBombaRecirculacion, INPUT_PULLUP);
+   lcd.init();      // inicializa la pantalla LCD
+   lcd.backlight(); // enciende la luz de fondo del LCD
+   // Establecemos el modo de los pines
+   pinMode(pinReleIN1, OUTPUT);
+   pinMode(pinReleIN2, OUTPUT);
+   pinMode(pinReleIN3, OUTPUT);
+   pinMode(pinInterruptor, INPUT_PULLUP);
+   pinMode(pinLed, OUTPUT);
+   // Bombas de agua apagadas
+   digitalWrite(pinReleIN1, HIGH);
+   digitalWrite(pinReleIN2, HIGH);
+   digitalWrite(pinReleIN3, HIGH);
+   // Inicializacion puerto serial
    Serial.begin(9600);
 }
 
 void loop()
 {
-   digitalWrite(releIN2, HIGH);
-   digitalWrite(releIN3, HIGH);
-   lcd.clear();
-   lcd.backlight();
-   lcd.setCursor(0, 0);
-   lcd.print("LECTURA HUMEDAD");
+   promedioHumedadesSuelo(mumeroLecturasParaObtenerPromedio, valorLecturaTierraSeca);
 
-   //Se llama a prodedimiento que promedia las lecturas
-   promedio_humedad(cant_lec, seco);
-   delay(time_mo);
-   lcd.clear();
-
-   if (prom_sh1 >= min_le && prom_sh1 <= max_le)
+   if (promedioPorcentajesSHS1 >= porcentajeMinimoSHS1 && promedioPorcentajesSHS1 <= porcentajeMaximoSHS1)
    {
-      digitalWrite(releIN2, LOW);
-      lcd.setCursor(0, 0);
-      lcd.print("REGANDO LECHUGA CARRIL 1");
-      lcd.setCursor(0, 1);
-      lcd.print("Durante: " + String(time_le / 1000) + "s");
-      delay(time_le);
-      digitalWrite(releIN2, HIGH);
+      digitalWrite(pinReleIN2, LOW);
+      lcd.setCursor(2, 0);
+      lcd.print("BOMBA AGUA 1");
+      lcd.setCursor(2, 1);
+      lcd.print("ACTIVANDO " + String(tiempoRiegoSHS1 / 1000) + "s");
+      delay(tiempoRiegoSHS1);
+      digitalWrite(pinReleIN2, HIGH);
    }
 
-   if (prom_sh2 >= min_le && prom_sh2 <= max_le)
+   if (promedioPorcentajesSHS2 >= porcentajeMinimoSHS2 && promedioPorcentajesSHS2 <= porcentajeMaximoSHS2)
    {
-      digitalWrite(releIN3, LOW);
-      lcd.setCursor(0, 0);
-      lcd.print("REGANDO LECHUGA CARRIL 2");
-      lcd.setCursor(0, 1);
-      lcd.print("Durante: " + String(time_le / 1000) + "s");
-      delay(time_le);
-      digitalWrite(releIN3, HIGH);
+      digitalWrite(pinReleIN3, LOW);
+      lcd.setCursor(2, 0);
+      lcd.print("BOMBA AGUA 2");
+      lcd.setCursor(2, 1);
+      lcd.print("ACTIVANDO " + String(tiempoRiegoSHS2 / 1000) + "s");
+      delay(tiempoRiegoSHS2);
+      digitalWrite(pinReleIN3, HIGH);
    }
 
-   int lectura = digitalRead(interruptorBombaRecirculacion);
-   if (lectura == LOW)
+   int lectura = digitalRead(pinInterruptor);
+   if (lectura == HIGH)
    {
-      esta_encendida = true;
+      encendidoBombaAguaRecirculacion = true;
    }
    else
    {
-      esta_encendida = false;
+      encendidoBombaAguaRecirculacion = false;
    }
 
-   if (esta_encendida)
+   if (encendidoBombaAguaRecirculacion)
    {
-      Serial.println("encendido");
-      digitalWrite(releIN1, LOW);
+      Serial.println("Bomba de agua de recirculacion encendida");
+      digitalWrite(pinReleIN1, LOW);
+      digitalWrite(pinLed, HIGH);
    }
    else
    {
-      Serial.println("apagado");
-      digitalWrite(releIN1, HIGH);
+      Serial.println("Bomba de agua de recirculacion apagada");
+      digitalWrite(pinReleIN1, HIGH);
+      digitalWrite(pinLed, LOW);
    }
 }
 
-void promedio_humedad(int lec, float cali_seco)
+void promedioHumedadesSuelo(byte numeroLecturas, float valorLecturaTierraSeca)
 {
-   float sum_sh1 = 0;
-   float sum_sh2 = 0;
-   for (int i = 1; i <= lec; i++)
+   lcd.clear();
+   lcd.setCursor(4, 0);
+   lcd.print("LEYENDO");
+   lcd.setCursor(2, 1);
+   lcd.print("HUMEDADES...");
+   float sumaPorcentajesSHS1 = 0;
+   float sumaPorcentajesSHS2 = 0;
+   float sumaLecturasSHS1 = 0;
+   float sumaLecturasSHS2 = 0;
+   for (int i = 1; i <= numeroLecturas; i++)
    {
-      float lec_sh1 = analogRead(pin_sh1);
-      float lec_sh2 = analogRead(pin_sh2);
-      float hu_sh1 = (100 - ((lec_sh1 * 100) / cali_seco)) * 2;
-      float hu_sh2 = (100 - ((lec_sh2 * 100) / cali_seco)) * 2;
-      sum_sh1 = sum_sh1 + hu_sh1;
-      sum_sh2 = sum_sh2 + hu_sh2;
-      delay(time_lectura);
+      float lecturaSHS1 = analogRead(pinSHS1);
+      float lecturaSHS2 = analogRead(pinSHS2);
+      sumaLecturasSHS1 = sumaLecturasSHS1 + lecturaSHS1;
+      sumaLecturasSHS2 = sumaLecturasSHS2 + lecturaSHS2;
+      float porcentajeSHS1 = map(lecturaSHS1, 1021, 305, 0, 100);
+      float porcentajeSHS2 = map(lecturaSHS2, 1022, 275, 0, 100);
+      // float porcentajeSHS1 = (100 - ((lecturaSHS1 * 100) / valorLecturaTierraSeca)) * 2;
+      // float porcentajeSHS2 = (100 - ((lecturaSHS2 * 100) / valorLecturaTierraSeca)) * 2;
+      sumaPorcentajesSHS1 = sumaPorcentajesSHS1 + porcentajeSHS1;
+      sumaPorcentajesSHS2 = sumaPorcentajesSHS2 + porcentajeSHS2;
+      delay(tiempoEntreLecturas);
    }
-
-   prom_sh1 = sum_sh1 / lec;
-   prom_sh2 = sum_sh2 / lec;
+   promedioLecturasSHS1 = sumaLecturasSHS1 / numeroLecturas;
+   promedioLecturasSHS2 = sumaLecturasSHS2 / numeroLecturas;
+   promedioPorcentajesSHS1 = sumaPorcentajesSHS1 / numeroLecturas;
+   promedioPorcentajesSHS2 = sumaPorcentajesSHS2 / numeroLecturas;
+   Serial.println("S1: " + String(promedioLecturasSHS1));
+   Serial.println("S2: " + String(promedioLecturasSHS2));
+   lcd.clear();
+   lcd.setCursor(0, 0);
+   lcd.print("LECTURA HUMEDAD");
    lcd.setCursor(0, 1);
-   lcd.print("s1:" + String(int(prom_sh1)) + "%");
-   lcd.setCursor(7, 1);
-   lcd.print("s2:" + String(int(prom_sh2)) + "%");
+   lcd.print("S1:" + String(int(promedioPorcentajesSHS1)) + "%");
+   lcd.setCursor(9, 1);
+   lcd.print("S2:" + String(int(promedioPorcentajesSHS2)) + "%");
+   delay(tiempoMostrandoLecturasHumedadSuelo);
+   lcd.clear();
 }
