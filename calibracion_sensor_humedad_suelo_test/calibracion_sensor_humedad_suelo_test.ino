@@ -8,8 +8,7 @@ const float pinSH1 = A0;
 const float pinSH2 = A1;
 
 /*
-   La placa Arduino detectará el nivel de voltaje entregado por el sensor de humedad de suelo,
-   y lo convertirá en un número equivalente a la cantidad de humedad detectada entre 0 y 1023
+   La placa Arduino detectará el nivel de voltaje entregado por el sensor de humedad de suelo, y lo convertirá en un número equivalente a la cantidad de humedad detectada entre 0 y 1023
 */
 
 //Numero de lecturas del sensor de humedad para el promedio
