@@ -1,0 +1,13 @@
+{
+    "MD013": false,
+    "no-inline-html": {
+        "allowed_elements": [
+            "figure",
+            "img",
+            "figcaption"
+        ]
+    },
+    "no-duplicate-header": {
+        "allow_different_nesting": true
+    }
+}
