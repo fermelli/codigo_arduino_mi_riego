@@ -50,7 +50,7 @@ RTC_DS3231 reloj;
 
 // Variable para manipular el archivo de la tarjeta SD
 File miArchivo;
-byte pinCS = 4;
+byte pinCS = 53;
 // Variable con el nombre del archivo en el SD
 String nombreArchivo = "data.csv";
 
@@ -241,8 +241,7 @@ void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
    String marcaDeTiempo = ahora.timestamp(); // obtener la marca de tiempo "actual"
    float humedadRelativa = sensorHRT.readHumidity();
    float temperaturaCelcius = sensorHRT.readTemperature();
-   float temperaturaFarentheit = sensorHRT.readTemperature(true);
-   boolean lecturasSensorHRTSonValidas = !isnan(humedadRelativa) && !isnan(temperaturaCelcius) && !isnan(temperaturaFarentheit); // isnan() -->  is not a number, verifica si el valor no es un numero (nan -> not a number)
+   boolean lecturasSensorHRTSonValidas = !isnan(humedadRelativa) && !isnan(temperaturaCelcius); // isnan() -->  is not a number, verifica si el valor no es un numero (nan -> not a number)
    // Guardar en tarjeta SD
    if (millis() - tiempoMilisegundos >= tiempoEntreGuardadoDeLecturasRegistradas || tiempoMilisegundos == 0)
    {
@@ -252,7 +251,7 @@ void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
       {
          if (lecturasSensorHRTSonValidas)
          {
-            String registro = String(promedioPorcentajesSHS1) + "," + String(promedioPorcentajesSHS2) + "," + String(humedadRelativa) + "," + String(temperaturaCelcius) + "," + String(temperaturaFarentheit) + "," + marcaDeTiempo; // concatenamos las lecturas separandolos con comas (formato posible para un .csv)
+            String registro = String(promedioPorcentajesSHS1) + "," + String(promedioPorcentajesSHS2) + "," + String(humedadRelativa) + "," + String(temperaturaCelcius) + "," + marcaDeTiempo; // concatenamos las lecturas separandolos con comas (formato posible para un .csv)
             miArchivo.println(registro);
             Serial.println(registro);
             lcd.clear();
@@ -278,7 +277,7 @@ void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
    lcd.setCursor(0, 0);
    if (lecturasSensorHRTSonValidas)
    {
-      lcd.print("HR:" + String(int(humedadRelativa)) + "  " + String(int(temperaturaCelcius)) + "C  " + String(int(temperaturaFarentheit)) + "F");
+      lcd.print("HR:" + String(int(humedadRelativa)) + "     " + String(int(temperaturaCelcius)) + "C");
    }
    else
    {
