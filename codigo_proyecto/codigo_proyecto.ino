@@ -121,6 +121,12 @@ const int tiempoRiegoSHS2 = 2000;
 
 long tiempoMilisegundos = 0;
 
+//Sensores de nivel de agua (flotadores)
+#define pinSensorNivelInferior 3
+#define pinSensorNivelSuperior 4
+boolean aNivelMaximo;
+boolean aNivelMinimo;
+
 void setup()
 {
    // Inicializacion puerto serial
@@ -162,6 +168,11 @@ void setup()
    }
    // Sensor humedad relativa y temperatura
    sensorHRT.begin();
+   //Sensores de nivel de agua (flotadores)
+   pinMode(pinSensorNivelInferior, INPUT);
+   pinMode(pinSensorNivelSuperior, INPUT);
+   aNivelMinimo = false;
+   aNivelMaximo = false;
 }
 
 void loop()
@@ -190,28 +201,72 @@ void loop()
       digitalWrite(pinReleIN3, HIGH);
    }
 
-   int lectura = digitalRead(pinInterruptor);
-   if (lectura == HIGH)
+   if (digitalRead(pinSensorNivelInferior) == HIGH)
+   {
+      aNivelMinimo = true;
+   }
+   else
+   {
+      aNivelMinimo = false;
+   }
+
+   if (digitalRead(pinSensorNivelSuperior) == HIGH)
+   {
+      aNivelMaximo = true;
+   }
+   else
+   {
+      aNivelMaximo = false;
+   }
+
+   if (aNivelMaximo && aNivelMinimo)
    {
       encendidoBombaAguaRecirculacion = true;
    }
    else
    {
-      encendidoBombaAguaRecirculacion = false;
+      if (!aNivelMinimo)
+      {
+         encendidoBombaAguaRecirculacion = false;
+      }
    }
 
-   if (encendidoBombaAguaRecirculacion)
+   // int lectura = digitalRead(pinInterruptor);
+   // if (lectura == HIGH)
+   // {
+   //    encendidoBombaAguaRecirculacion = true;
+   // }
+   // else
+   // {
+   //    encendidoBombaAguaRecirculacion = false;
+   // }
+
+   byte lecturaInterruptor = digitalRead(pinInterruptor);
+   if (encendidoBombaAguaRecirculacion || lecturaInterruptor == HIGH)
    {
-      // Serial.println("Bomba de agua de recirculacion encendida");
+      // Bomba de agua de recirculacion encendida
       digitalWrite(pinReleIN1, LOW);
       digitalWrite(pinLed, HIGH);
    }
    else
    {
-      // Serial.println("Bomba de agua de recirculacion apagada");
+      // Bomba de agua de recirculacion apagada
       digitalWrite(pinReleIN1, HIGH);
       digitalWrite(pinLed, LOW);
    }
+
+   // if (encendidoBombaAguaRecirculacion)
+   // {
+   //    // Serial.println("Bomba de agua de recirculacion encendida");
+   //    digitalWrite(pinReleIN1, LOW);
+   //    digitalWrite(pinLed, HIGH);
+   // }
+   // else
+   // {
+   //    // Serial.println("Bomba de agua de recirculacion apagada");
+   //    digitalWrite(pinReleIN1, HIGH);
+   //    digitalWrite(pinLed, LOW);
+   // }
 }
 
 void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
