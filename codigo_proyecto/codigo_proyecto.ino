@@ -127,6 +127,16 @@ long tiempoMilisegundos = 0;
 boolean aNivelMaximo;
 boolean aNivelMinimo;
 
+//Nivel de agua pecera
+const byte pinTrigger = 8;
+const byte pinEcho = 9;
+const byte pinPiezo = 10;
+const byte pinLedNivelPecera = 11;
+long tiempoUltrasonico;
+long distancia;
+long distanciaMaxima = 21;
+long distanciaMinima = 17;
+
 void setup()
 {
    // Inicializacion puerto serial
@@ -173,6 +183,13 @@ void setup()
    pinMode(pinSensorNivelSuperior, INPUT);
    aNivelMinimo = false;
    aNivelMaximo = false;
+   //Nivel de agua pecera
+   pinMode(pinTrigger, OUTPUT);
+   pinMode(pinEcho, INPUT);
+   digitalWrite(pinTrigger, LOW);
+
+   pinMode(pinPiezo, OUTPUT);
+   pinMode(pinLedNivelPecera, OUTPUT);
 }
 
 void loop()
@@ -231,16 +248,6 @@ void loop()
       }
    }
 
-   // int lectura = digitalRead(pinInterruptor);
-   // if (lectura == HIGH)
-   // {
-   //    encendidoBombaAguaRecirculacion = true;
-   // }
-   // else
-   // {
-   //    encendidoBombaAguaRecirculacion = false;
-   // }
-
    byte lecturaInterruptor = digitalRead(pinInterruptor);
    if (encendidoBombaAguaRecirculacion || lecturaInterruptor == HIGH)
    {
@@ -255,18 +262,29 @@ void loop()
       digitalWrite(pinLed, LOW);
    }
 
-   // if (encendidoBombaAguaRecirculacion)
-   // {
-   //    // Serial.println("Bomba de agua de recirculacion encendida");
-   //    digitalWrite(pinReleIN1, LOW);
-   //    digitalWrite(pinLed, HIGH);
-   // }
-   // else
-   // {
-   //    // Serial.println("Bomba de agua de recirculacion apagada");
-   //    digitalWrite(pinReleIN1, HIGH);
-   //    digitalWrite(pinLed, LOW);
-   // }
+   digitalWrite(pinTrigger, HIGH);
+   delayMicroseconds(10);
+   digitalWrite(pinTrigger, LOW);
+
+   tiempoUltrasonico = pulseIn(pinEcho, HIGH);
+   distancia = tiempoUltrasonico / 59;
+   if (distancia > distanciaMaxima || distancia < distanciaMinima)
+   {
+      if (distancia > distanciaMaxima)
+      {
+         tone(pinPiezo, 1000);
+      }
+      if (distancia < distanciaMinima)
+      {
+         tone(pinPiezo, 2000);
+      }
+      digitalWrite(pinLedNivelPecera, HIGH);
+   }
+   else
+   {
+      noTone(pinPiezo);
+      digitalWrite(pinLedNivelPecera, LOW);
+   }
 }
 
 void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
