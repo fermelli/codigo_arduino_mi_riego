@@ -1,5 +1,5 @@
-const byte trigger = 4;
-const byte echo = 5;
+const byte trigger = 8;
+const byte echo = 9;
 
 void setup() {
   pinMode(trigger, OUTPUT);
@@ -19,9 +19,9 @@ void loop() {
   tiempo = pulseIn(echo, HIGH);
   distancia = tiempo/59;
 
-  Serial.print("Distancia sensor izquierdo: ");
+  Serial.print("Distancia sensor: ");
   Serial.print(distancia);
   Serial.print("cm");
   Serial.println();
-  delay(100); 
+  delay(5000); 
 }
