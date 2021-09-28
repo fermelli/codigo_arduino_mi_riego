@@ -59,7 +59,8 @@ String nombreArchivo = "data.csv";
    1. el pin al que se conecta
    2. el modelo de sensor (DTH11 o DTH22)
 */
-byte pinSensorHRT = 2;
+#define pinSensorHRT 2
+#define pinSensorHRTPower 5
 #define tipoSensorHRT DHT11
 DHT sensorHRT(pinSensorHRT, tipoSensorHRT);
 
@@ -100,7 +101,7 @@ const int tiempoEntreLecturasDelPromedio = 500;
 // Tiempo entre cada realizacion de las lecturas por los sensores
 const long tiempoEntreLecturasRealizadas = 5000;
 // Tiempo entre el guardado de las lecturas realizadas por los sensores
-const long tiempoEntreGuardadoDeLecturasRegistradas = 60000;
+const long tiempoEntreGuardadoDeLecturasRegistradas = 10000;
 
 // Variables para el promedio de humedades del suelo leidas por los sensores
 float promedioPorcentajesSHS1 = 0; // 0% -> 100% (usamos este)
@@ -126,16 +127,6 @@ long tiempoMilisegundos = 0;
 #define pinSensorNivelSuperior 4
 boolean aNivelMaximo;
 boolean aNivelMinimo;
-
-//Nivel de agua pecera
-const byte pinTrigger = 8;
-const byte pinEcho = 9;
-const byte pinPiezo = 10;
-const byte pinLedNivelPecera = 11;
-long tiempoUltrasonico;
-long distancia;
-long distanciaMaxima = 21;
-long distanciaMinima = 17;
 
 void setup()
 {
@@ -178,18 +169,13 @@ void setup()
    }
    // Sensor humedad relativa y temperatura
    sensorHRT.begin();
+   pinMode(pinSensorHRTPower, OUTPUT);
+   digitalWrite(pinSensorHRTPower, HIGH);
    //Sensores de nivel de agua (flotadores)
    pinMode(pinSensorNivelInferior, INPUT);
    pinMode(pinSensorNivelSuperior, INPUT);
    aNivelMinimo = false;
    aNivelMaximo = false;
-   //Nivel de agua pecera
-   pinMode(pinTrigger, OUTPUT);
-   pinMode(pinEcho, INPUT);
-   digitalWrite(pinTrigger, LOW);
-
-   pinMode(pinPiezo, OUTPUT);
-   pinMode(pinLedNivelPecera, OUTPUT);
 }
 
 void loop()
@@ -261,30 +247,6 @@ void loop()
       digitalWrite(pinReleIN1, HIGH);
       digitalWrite(pinLed, LOW);
    }
-
-   digitalWrite(pinTrigger, HIGH);
-   delayMicroseconds(10);
-   digitalWrite(pinTrigger, LOW);
-
-   tiempoUltrasonico = pulseIn(pinEcho, HIGH);
-   distancia = tiempoUltrasonico / 59;
-   if (distancia > distanciaMaxima || distancia < distanciaMinima)
-   {
-      if (distancia > distanciaMaxima)
-      {
-         tone(pinPiezo, 1000);
-      }
-      if (distancia < distanciaMinima)
-      {
-         tone(pinPiezo, 2000);
-      }
-      digitalWrite(pinLedNivelPecera, HIGH);
-   }
-   else
-   {
-      noTone(pinPiezo);
-      digitalWrite(pinLedNivelPecera, LOW);
-   }
 }
 
 void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
@@ -315,6 +277,11 @@ void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
    float humedadRelativa = sensorHRT.readHumidity();
    float temperaturaCelcius = sensorHRT.readTemperature();
    boolean lecturasSensorHRTSonValidas = !isnan(humedadRelativa) && !isnan(temperaturaCelcius); // isnan() -->  is not a number, verifica si el valor no es un numero (nan -> not a number)
+   if(!lecturasSensorHRTSonValidas) {
+    digitalWrite(pinSensorHRTPower, LOW);
+    delay(100);
+    digitalWrite(pinSensorHRTPower, HIGH);
+   }
    // Guardar en tarjeta SD
    if (millis() - tiempoMilisegundos >= tiempoEntreGuardadoDeLecturasRegistradas || tiempoMilisegundos == 0)
    {
@@ -332,6 +299,7 @@ void lecturasSensores(int numeroLecturas, float valorLecturaTierraSeca)
             lcd.print("GUARDANDO");
             lcd.setCursor(3, 1);
             lcd.print("REGISTRO...");
+            Serial.println("Guardando Registro");
             delay(1000);
          }
          else
