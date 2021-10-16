@@ -2,49 +2,47 @@
 #include <LiquidCrystal_I2C.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
 const float pinSHS1 = A0;
 const float pinSHS2 = A1;
-
 const byte pinReleIN1 = 40;
 const byte pinReleIN2 = 41;
 const byte pinReleIN3 = 42;
-const byte pinLed = 7;
-
+const byte pinLed = 7;     
 const byte pinInterruptor = 38;
 bool encendidoBombaAguaRecirculacion = false;
-
 const int mumeroLecturasParaObtenerPromedio = 10;
 const int tiempoEntreLecturasDelPromedio = 500;
 const long tiempoEntreLecturasRealizadas = 5000;
-
 float promedioPorcentajesSHS1 = 0;
 float promedioPorcentajesSHS2 = 0;
-
 const int porcentajeMinimoSHS1 = 0;
 const int porcentajeMaximoSHS1 = 70;
-
 const int porcentajeMinimoSHS2 = 0;
 const int porcentajeMaximoSHS2 = 70;
-
 const int tiempoRiegoSHS1 = 2000;
 const int tiempoRiegoSHS2 = 2000;
+#define pinSensorNivelInferior 3
+#define pinSensorNivelSuperior 4
+boolean aNivelMaximo;
+boolean aNivelMinimo;
 
 void setup()
 {
    Serial.begin(9600);
-   lcd.init();
+   lcd.init();    
    lcd.backlight();
-
    pinMode(pinReleIN1, OUTPUT);
    pinMode(pinReleIN2, OUTPUT);
    pinMode(pinReleIN3, OUTPUT);
    pinMode(pinInterruptor, INPUT_PULLUP);
    pinMode(pinLed, OUTPUT);
-
    digitalWrite(pinReleIN1, HIGH);
    digitalWrite(pinReleIN2, HIGH);
    digitalWrite(pinReleIN3, HIGH);
+   pinMode(pinSensorNivelInferior, INPUT);
+   pinMode(pinSensorNivelSuperior, INPUT);
+   aNivelMinimo = false;
+   aNivelMaximo = false;
 }
 
 void loop()
@@ -73,17 +71,38 @@ void loop()
       digitalWrite(pinReleIN3, HIGH);
    }
 
-   int lectura = digitalRead(pinInterruptor);
-   if (lectura == HIGH)
+   if (digitalRead(pinSensorNivelInferior) == HIGH)
+   {
+      aNivelMinimo = true;
+   }
+   else
+   {
+      aNivelMinimo = false;
+   }
+
+   if (digitalRead(pinSensorNivelSuperior) == HIGH)
+   {
+      aNivelMaximo = true;
+   }
+   else
+   {
+      aNivelMaximo = false;
+   }
+
+   if (aNivelMaximo && aNivelMinimo)
    {
       encendidoBombaAguaRecirculacion = true;
    }
    else
    {
-      encendidoBombaAguaRecirculacion = false;
+      if (!aNivelMinimo)
+      {
+         encendidoBombaAguaRecirculacion = false;
+      }
    }
 
-   if (encendidoBombaAguaRecirculacion)
+   byte lecturaInterruptor = digitalRead(pinInterruptor);
+   if (encendidoBombaAguaRecirculacion || lecturaInterruptor == HIGH)
    {
       digitalWrite(pinReleIN1, LOW);
       digitalWrite(pinLed, HIGH);
@@ -102,26 +121,20 @@ void lecturasSensores(int numeroLecturas)
    lcd.print("LEYENDO");
    lcd.setCursor(2, 1);
    lcd.print("SENSORES...");
-
    float sumaPorcentajesSHS1 = 0;
    float sumaPorcentajesSHS2 = 0;
    for (int i = 1; i <= numeroLecturas; i++)
    {
       float lecturaSHS1 = analogRead(pinSHS1);
       float lecturaSHS2 = analogRead(pinSHS2);
-
       float porcentajeSHS1 = map(lecturaSHS1, 1021, 305, 0, 100);
       float porcentajeSHS2 = map(lecturaSHS2, 1022, 275, 0, 100);
-
       sumaPorcentajesSHS1 = sumaPorcentajesSHS1 + porcentajeSHS1;
       sumaPorcentajesSHS2 = sumaPorcentajesSHS2 + porcentajeSHS2;
-
       delay(tiempoEntreLecturasDelPromedio);
    }
-
    promedioPorcentajesSHS1 = sumaPorcentajesSHS1 / numeroLecturas;
    promedioPorcentajesSHS2 = sumaPorcentajesSHS2 / numeroLecturas;
-
    lcd.clear();
    lcd.setCursor(0, 0);
    lcd.print("HUMEDAD SUELO");

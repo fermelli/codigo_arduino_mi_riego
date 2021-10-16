@@ -1,11 +1,20 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <DHT.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+#define pinSensorHRT 2
+#define pinSensorHRTPower 5
+#define tipoSensorHRT DHT11
+DHT sensorHRT(pinSensorHRT, tipoSensorHRT);
 const float pinSHS1 = A0;
 const float pinSHS2 = A1;
+const byte pinReleIN1 = 40;
 const byte pinReleIN2 = 41;
 const byte pinReleIN3 = 42;
+const byte pinLed = 7;     
+const byte pinInterruptor = 38;
+bool encendidoBombaAguaRecirculacion = false;
 const int mumeroLecturasParaObtenerPromedio = 10;
 const int tiempoEntreLecturasDelPromedio = 500;
 const long tiempoEntreLecturasRealizadas = 5000;
@@ -17,22 +26,37 @@ const int porcentajeMinimoSHS2 = 0;
 const int porcentajeMaximoSHS2 = 70;
 const int tiempoRiegoSHS1 = 2000;
 const int tiempoRiegoSHS2 = 2000;
+#define pinSensorNivelInferior 3
+#define pinSensorNivelSuperior 4
+boolean aNivelMaximo;
+boolean aNivelMinimo;
 
 void setup()
 {
    Serial.begin(9600);
-   lcd.init();
+   lcd.init();    
    lcd.backlight();
+   pinMode(pinReleIN1, OUTPUT);
    pinMode(pinReleIN2, OUTPUT);
    pinMode(pinReleIN3, OUTPUT);
+   pinMode(pinInterruptor, INPUT_PULLUP);
+   pinMode(pinLed, OUTPUT);
+   digitalWrite(pinReleIN1, HIGH);
    digitalWrite(pinReleIN2, HIGH);
    digitalWrite(pinReleIN3, HIGH);
+   sensorHRT.begin();
+   pinMode(pinSensorHRTPower, OUTPUT);
+   digitalWrite(pinSensorHRTPower, HIGH);
+   pinMode(pinSensorNivelInferior, INPUT);
+   pinMode(pinSensorNivelSuperior, INPUT);
+   aNivelMinimo = false;
+   aNivelMaximo = false;
 }
 
 void loop()
 {
    lecturasSensores(mumeroLecturasParaObtenerPromedio);
-   
+
    if (promedioPorcentajesSHS1 >= porcentajeMinimoSHS1 && promedioPorcentajesSHS1 <= porcentajeMaximoSHS1)
    {
       digitalWrite(pinReleIN2, LOW);
@@ -53,6 +77,48 @@ void loop()
       lcd.print("ACTIVANDO " + String(tiempoRiegoSHS2 / 1000) + "s");
       delay(tiempoRiegoSHS2);
       digitalWrite(pinReleIN3, HIGH);
+   }
+
+   if (digitalRead(pinSensorNivelInferior) == HIGH)
+   {
+      aNivelMinimo = true;
+   }
+   else
+   {
+      aNivelMinimo = false;
+   }
+
+   if (digitalRead(pinSensorNivelSuperior) == HIGH)
+   {
+      aNivelMaximo = true;
+   }
+   else
+   {
+      aNivelMaximo = false;
+   }
+
+   if (aNivelMaximo && aNivelMinimo)
+   {
+      encendidoBombaAguaRecirculacion = true;
+   }
+   else
+   {
+      if (!aNivelMinimo)
+      {
+         encendidoBombaAguaRecirculacion = false;
+      }
+   }
+
+   byte lecturaInterruptor = digitalRead(pinInterruptor);
+   if (encendidoBombaAguaRecirculacion || lecturaInterruptor == HIGH)
+   {
+      digitalWrite(pinReleIN1, LOW);
+      digitalWrite(pinLed, HIGH);
+   }
+   else
+   {
+      digitalWrite(pinReleIN1, HIGH);
+      digitalWrite(pinLed, LOW);
    }
 }
 
@@ -77,9 +143,24 @@ void lecturasSensores(int numeroLecturas)
    }
    promedioPorcentajesSHS1 = sumaPorcentajesSHS1 / numeroLecturas;
    promedioPorcentajesSHS2 = sumaPorcentajesSHS2 / numeroLecturas;
+   float humedadRelativa = sensorHRT.readHumidity();
+   float temperaturaCelcius = sensorHRT.readTemperature();
+   boolean lecturasSensorHRTSonValidas = !isnan(humedadRelativa) && !isnan(temperaturaCelcius);
+   if(!lecturasSensorHRTSonValidas) {
+    digitalWrite(pinSensorHRTPower, LOW);
+    delay(100);
+    digitalWrite(pinSensorHRTPower, HIGH);
+   }
    lcd.clear();
    lcd.setCursor(0, 0);
-   lcd.print("HUMEDAD SUELO");
+   if (lecturasSensorHRTSonValidas)
+   {
+      lcd.print("HR:" + String(int(humedadRelativa)) + "     " + String(int(temperaturaCelcius)) + "C");
+   }
+   else
+   {
+      lcd.print("HUMEDAD SUELO");
+   }
    lcd.setCursor(0, 1);
    lcd.print("S1:" + String(int(promedioPorcentajesSHS1)) + "%");
    lcd.setCursor(9, 1);
